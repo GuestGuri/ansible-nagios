@@ -1,0 +1,119 @@
+- hosts: web
+  tasks:
+
+    - block:
+
+       - name: Add nagios user
+         user:
+             name: johnd
+             comment: John Doe
+             state: present
+
+       - name: Updating system 
+         apt: update_cache=yes 
+         ignore_errors: yes  
+
+       - name: Install list of packages
+         apt: name={{item}} state=installed
+         with_items:
+              - build-essential
+              - libgd2-xpm-dev
+              - openssl
+              - libssl-dev
+              - unzip
+         ignore_errors: yes  
+
+       - name: Downloading nagios-plugins
+         get_url:
+           url: http://nagios-plugins.org/download/nagios-plugins-2.2.1.tar.gz
+           dest: /home/vagrant/nagios-plugins-2.2.1.tar.gz
+
+       - name: Extracting nagios-plugins archive
+         unarchive:
+           src: /home/vagrant/nagios-plugins-2.2.1.tar.gz
+           dest: /home/vagrant/
+           remote_src: yes
+           copy: no
+         ignore_errors: yes
+ 
+       - name: Executing nagios-plugins configuration script
+         shell: chdir=/home/vagrant/nagios-plugins-2.2.1 ./configure --with-nagios-user=nagios --with-nagios-group=nagios --with-openssl
+         ignore_errors: yes   
+         become: true
+
+       - name: Compiling nagios-plugins 
+         shell: chdir=/home/vagrant/nagios-plugins-2.2.1 make
+         ignore_errors: yes   
+
+       - name: Installing nagios-plugins 
+         shell: chdir=/home/vagrant/nagios-plugins-2.2.1 make install 
+         ignore_errors: yes   
+         become: true
+
+       - name: Downloading nagios-plugins
+         get_url:
+           url: https://github.com/NagiosEnterprises/nrpe/releases/download/nrpe-3.2.1/nrpe-3.2.1.tar.gz
+           dest: /home/vagrant/nrpe-3.2.1.tar.gz  
+    
+       - name: Extracting nrpe archive
+         unarchive:
+           src: /home/vagrant/nrpe-3.2.1.tar.gz
+           dest: /home/vagrant/
+           remote_src: yes
+           copy: no
+         ignore_errors: yes
+ 
+       - name: Executing nrpe configuration script
+         shell: chdir=/home/vagrant/nrpe-3.2.1 ./configure --enable-command-args --with-nagios-user=nagios --with-nagios-group=nagios --with-ssl=/usr/bin/openssl --with-ssl-lib=/usr/lib/x86_64-linux-gnu
+         ignore_errors: yes   
+         become: true
+
+       - name: Compiling nrpe 
+         shell: chdir=/home/vagrant/nrpe-3.2.1 make all
+         ignore_errors: yes   
+
+       - name: Installing nrpe 1/3
+         shell: chdir=/home/vagrant/nrpe-3.2.1 make install  
+         ignore_errors: yes   
+         become: true
+
+       - name: Installing nrpe 2/3
+         shell: chdir=/home/vagrant/nrpe-3.2.1 make install-config
+         ignore_errors: yes  
+         become: true
+
+       - name: Installing nrpe 3/3
+         shell: chdir=/home/vagrant/nrpe-3.2.1 make install-init 
+         ignore_errors: yes    
+         become: true
+
+       - name: Editing nrpe config file
+         replace:
+             name: /usr/local/nagios/etc/nrpe.cfg
+             regexp: 'allowed_hosts=127.0.0.1,::1'
+             replace: 'allowed_hosts=127.0.0.1,::1,172.20.1.126'    #adapt this with your nagios server address
+             backup: yes
+
+       - name: Start service nrpe, if not running
+         service:
+             name: nrpe
+             state: restarted
+
+       - name: Allow port 5666
+         ufw:
+             rule: allow
+             proto: tcp
+             port: 5666
+
+
+
+      always:
+       - name: I am always running
+         file: 
+           state: absent
+           path: "/home/julia/audit"
+
+
+
+
+

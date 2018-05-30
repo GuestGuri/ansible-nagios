@@ -1,0 +1,10 @@
+[web]
+#target address
+
+[web:vars]
+ansible_connection=ssh
+ansible_ssh_user=vagrant
+ansible_ssh_pass=vagrant
+ansible_become=yes
+ansible_become_method=sudo 
+ansible_become_pass=vagrant
