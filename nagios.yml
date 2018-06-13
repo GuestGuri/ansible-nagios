@@ -5,8 +5,8 @@
 
        - name: Add nagios user
          user:
-             name: johnd
-             comment: John Doe
+             name: nagios
+             comment: nagios
              state: present
 
        - name: Updating system 
